@@ -7,14 +7,11 @@
 %global repo rkt
 
 %global import_path %{provider}.%{provider_tld}/%{project}/%{repo}
-#%global commit `git log | head -1 | cut -d' ' -f2
-%global commit 45cade58135d915ca1525f268369f9bef4d4fed6
+#%%global commit %%(git log | head -1 | cut -d' ' -f2)
+%global commit 13702b92f2cd0686b876e14fa1f86ac74ff8ea34
 %global shortcommit %(c=%{commit}; echo ${c:0:7})
-#%global builddir %(grep AC_INIT configure.ac  | cut -d' ' -f2| tr -d \]\[,)
-#%global version %(grep AC_INIT configure.ac  | cut -d' ' -f2| tr -d \]\[, | tr - _)
-# versions cannot have hyphens - but the version string for the build- dir does
-%global version 0.8.0_rc1+git
-%global builddir 0.8.0-rc1+git
+#%%global version %%(grep AC_INIT configure.ac  | cut -d' ' -f2| tr -d \]\[, | tr - _)
+%global version 0.8.0
 
 # valid values: coreos usr-from-src usr-from-host
 %global stage1_usr_from host
@@ -26,9 +23,7 @@ Summary:    CLI for running app containers
 License:    ASL 2.0
 URL:        https://%{import_path}
 ExclusiveArch:  x86_64
-Source0:    https://%{import_path}/archive/%{commit}/%{name}-%{version}_%{shortcommit}.tar.gz
-#Source0:    https://%{import_path}/archive/v%{version}.tar.gz
-#Source0:    %{name}-%{version}_%{shortcommit}.tar.gz
+Source0: https://%{import_path}/archive/%{commit}.tar.gz
 BuildRequires: autoconf
 BuildRequires: automake
 BuildRequires: git
@@ -45,16 +40,17 @@ BuildRequires: libmount-devel
 BuildRequires: libxkbcommon-devel
 BuildRequires: perl-Config-Tiny
 BuildRequires: squashfs-tools
+BuildRequires: systemd
 
-Requires(post): systemd => 220
-Requires(preun): systemd => 220
-Requires(postun): systemd => 220
+Requires(post): systemd >= 220
+Requires(preun): systemd >= 220
+Requires(postun): systemd >= 220
 
 %description
 %{summary}
 
 %prep
-%setup -qn %{repo}-%{version}
+%setup -q -n %{name}-%{commit}
 
 %build
 ./autogen.sh
@@ -66,8 +62,8 @@ make all
 # install binaries
 install -dp %{buildroot}{%{_bindir},%{_libexecdir}/%{name},%{_unitdir}}
 
-install -p -m 755 build-%{name}-%{builddir}/bin/%{name} %{buildroot}%{_bindir}
-install -p -m 644 build-%{name}-%{builddir}/bin/stage1.aci %{buildroot}%{_libexecdir}/%{name}/stage1.aci
+install -p -m 755 build-%{name}-%{version}/bin/%{name} %{buildroot}%{_bindir}
+install -p -m 644 build-%{name}-%{version}/bin/stage1.aci %{buildroot}%{_libexecdir}/%{name}/stage1.aci
 
 # install metadata unitfiles
 install -p -m 644 dist/init/systemd/%{name}-gc.timer %{buildroot}%{_unitdir}
@@ -76,11 +72,11 @@ install -p -m 644 dist/init/systemd/%{name}-metadata.socket %{buildroot}%{_unitd
 install -p -m 644 dist/init/systemd/%{name}-metadata.service %{buildroot}%{_unitdir}
 
 # Install runtime directories
-install -dp %{buildroot}%{_sharedstatedir}/%{name}
-install -dp %{buildroot}%{_sharedstatedir}/%{name}/cas
-install -dp %{buildroot}%{_sharedstatedir}/%{name}/cas/db
-install -dp %{buildroot}%{_sharedstatedir}/%{name}/tmp
-install -dp %{buildroot}%{_sharedstatedir}/%{name}/containers
+install -dp -m 755 %{buildroot}%{_sharedstatedir}/%{name}
+install -dp -m 755 %{buildroot}%{_sharedstatedir}/%{name}/cas
+install -dp -m 755 %{buildroot}%{_sharedstatedir}/%{name}/cas/db
+install -dp -m 755 %{buildroot}%{_sharedstatedir}/%{name}/tmp
+install -dp -m 700 %{buildroot}%{_sharedstatedir}/%{name}/containers
 
 %post
 %systemd_post %{name}-metadata
@@ -102,11 +98,10 @@ install -dp %{buildroot}%{_sharedstatedir}/%{name}/containers
 %{_unitdir}/%{name}-metadata.socket
 %{_unitdir}/%{name}-metadata.service
 
-%attr(0755,root,root) %{_sharedstatedir}/%{name}
-%attr(0775,root,root) %{_sharedstatedir}/%{name}/cas
-%attr(0775,root,root) %{_sharedstatedir}/%{name}/cas/db
-%attr(0775,root,root) %{_sharedstatedir}/%{name}/tmp
-%attr(0700,root,root) %{_sharedstatedir}/%{name}/containers
+%{_sharedstatedir}/%{name}/cas
+%{_sharedstatedir}/%{name}/cas/db
+%{_sharedstatedir}/%{name}/tmp
+%{_sharedstatedir}/%{name}/containers
 
 %changelog
 * Mon Aug 03 2015 Lokesh Mandvekar <lsm5@fedoraproject.org> - 0.7.0-3.git6dae5d5
